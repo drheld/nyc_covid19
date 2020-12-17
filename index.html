@@ -1,0 +1,253 @@
+<html>
+<head>
+  <title>NYC Covid Stats By Zip</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.bundle.min.js" integrity="sha512-SuxO9djzjML6b9w9/I07IWnLnQhgyYVSpHZx0JV97kGBfTIsUYlWflyuW4ypnvhBrslz1yJ3R+S14fdCWmSmSA==" crossorigin="anonymous"></script>
+  <script src="data.js"></script>
+  <style type="text/css">
+    #canvas-holder {
+        background-color: #FFFFFF;
+        top: 8px;
+        left: 8px;
+        right: 8px;
+        bottom: 8px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="selector">
+    <form action="/" method="get">
+      NYC Zip code: <input type="text" id="zip_input" name="zip">
+      <input type="submit" value="Update">
+    </form>
+  </div>
+  <div id="canvas-holder">
+    <canvas id="positives"></canvas>
+    <canvas id="testing"></canvas>
+    <canvas id="official"></canvas>
+  </div>
+  <div id="disclaimer">
+    Visualization may be inaccurate, and may have data issues. Source data from <a href="https://github.com/nychealth/coronavirus-data">NYC Health</a>.
+  </div>
+
+  <script>
+    var zip_code = '';
+    if (window.location.hash) {
+      zip_code = window.location.hash.substr(1);
+    }
+    const url_params = new URLSearchParams(window.location.search);
+    if (url_params.has('zip')) {
+      zip_code = url_params.get('zip');
+    }
+    document.getElementById('zip_input').value = zip_code;
+    if (zip_code == '') {
+      document.getElementById("canvas-holder").style.display="none";
+    }
+
+    window.chartColors = {
+      red: 'rgb(255, 99, 132)',
+      orange: 'rgb(255, 159, 64)',
+      yellow: 'rgb(255, 205, 86)',
+      green: 'rgb(75, 192, 192)',
+      blue: 'rgb(54, 162, 235)',
+      light_blue: 'rgb(173, 216, 230)',
+      purple: 'rgb(153, 102, 255)',
+      grey: 'rgb(201, 203, 207)'
+    };
+    var color = Chart.helpers.color;
+
+    var ctx = document.getElementById('positives').getContext('2d');
+    var cfg = {
+      type: 'line',
+      data: {
+        labels: data['dates'],
+        datasets: [{
+          data: data['daily'][zip_code],
+          label: "Daily Cases",
+          backgroundColor: color(window.chartColors.red).alpha(0.3).rgbString(),
+          borderColor: color(window.chartColors.red).alpha(0.3).rgbString(),
+          fill: true,
+        },
+        {
+          data: data['7daily'][zip_code],
+          label: "7-day Daily Average",
+          backgroundColor: color(window.chartColors.blue).alpha(0.5).rgbString(),
+          borderColor: window.chartColors.blue,
+          fill: false,
+        }]
+      },
+      options: {
+        scales: {
+          xAxes: [
+            {
+              display: true,
+              type: 'time',
+              scaleLabel: {
+                display: true,
+                labelString: 'Date',
+              },
+              time: {
+                parser: 'YYYY-MM-DD',
+                tooltipFormat: 'YYYY-MM-DD',
+                unit: 'day',
+                unitStepSize: 1,
+                displayFormats: {
+                  'day': 'MM-DD'
+                }
+              },
+            }
+          ]
+        },
+        title: {
+          display: true,
+          text: 'Daily Covid-19 Positives (' + zip_code + ')',
+        },
+      }
+    };
+
+    var positives_chart = new Chart(ctx, cfg);
+
+    var positive_percent = data['daily'][zip_code].map(function(n, i) {
+      if (i < 6) return null;
+      var total_tests = 0;
+      for (var j = i - 6; j <= i; j++) {
+        if (isFinite(data['tests'][zip_code][j])) {
+          total_tests = total_tests + data['tests'][zip_code][j];
+        }
+      }
+      return Math.round(((7 * data['7daily'][zip_code][i] / total_tests) + Number.EPSILON) * 10000) / 100;
+    });
+
+    var testing_ctx = document.getElementById('testing').getContext('2d');
+    var testing_cfg = {
+      type: 'line',
+      data: {
+        labels: data['dates'],
+        datasets: [{
+          data: data['tests'][zip_code],
+          label: "Daily Tests",
+          backgroundColor: color(window.chartColors.red).alpha(0.3).rgbString(),
+          borderColor: color(window.chartColors.red).alpha(0.3).rgbString(),
+          fill: true,
+          yAxisID: 'testA'
+        },
+        {
+          data: positive_percent,
+          label: "7-day Average Percent Positive",
+          backgroundColor: color(window.chartColors.blue).alpha(0.5).rgbString(),
+          borderColor: window.chartColors.blue,
+          fill: false,
+          yAxisID: 'percentA'
+        }]
+      },
+      options: {
+        scales: {
+          xAxes: [
+            {
+              display: true,
+              type: 'time',
+              scaleLabel: {
+                display: true,
+                labelString: 'Date',
+              },
+              time: {
+                parser: 'YYYY-MM-DD',
+                tooltipFormat: 'YYYY-MM-DD',
+                unit: 'day',
+                unitStepSize: 1,
+                displayFormats: {
+                  'day': 'MM-DD'
+                }
+              },
+            }
+          ],
+          yAxes: [
+            {
+              id: 'testA',
+              position: 'right',
+            }, {
+              id: 'percentA',
+              position: 'left',
+              scaleLabel: {
+                display: true,
+                labelString: 'Percent Positive',
+              },
+            },
+          ],
+        },
+        title: {
+          display: true,
+          text: 'Daily Covid-19 Tests (' + zip_code + ')',
+        },
+      }
+    };
+    var testing_chart = new Chart(testing_ctx, testing_cfg);
+
+    var official_ctx = document.getElementById('official').getContext('2d');
+    var official_cfg = {
+      type: 'line',
+      data: {
+        labels: data['ny7daydates'],
+        datasets: [{
+          data: data['ny7daypositive'][zip_code],
+          label: "Total Positive Over 7 Days",
+          backgroundColor: color(window.chartColors.red).alpha(0.3).rgbString(),
+          borderColor: color(window.chartColors.red).alpha(0.3).rgbString(),
+          fill: true,
+          yAxisID: 'testA'
+        },
+        {
+          data: data['ny7daypercent'][zip_code],
+          label: "7-day Average Percent Positive (excluding repeated testing)",
+          backgroundColor: color(window.chartColors.blue).alpha(0.5).rgbString(),
+          borderColor: window.chartColors.blue,
+          fill: false,
+          yAxisID: 'percentA'
+        }]
+      },
+      options: {
+        scales: {
+          xAxes: [
+            {
+              display: true,
+              type: 'time',
+              scaleLabel: {
+                display: true,
+                labelString: 'Date',
+              },
+              time: {
+                parser: 'YYYY-MM-DD',
+                tooltipFormat: 'YYYY-MM-DD',
+                unit: 'day',
+                unitStepSize: 1,
+                displayFormats: {
+                  'day': 'MM-DD'
+                }
+              },
+            }
+          ],
+          yAxes: [
+            {
+              id: 'testA',
+              position: 'right',
+            }, {
+              id: 'percentA',
+              position: 'left',
+              scaleLabel: {
+                display: true,
+                labelString: 'Percent Positive',
+              },
+            },
+          ],
+        },
+        title: {
+          display: true,
+          text: 'NYC Official Stats [excludes duplicate positive] (' + zip_code + ')',
+        },
+      }
+    };
+    var official_chart = new Chart(official_ctx, official_cfg);
+  </script>
+</body>
+
+</html>

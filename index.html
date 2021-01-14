@@ -25,6 +25,7 @@
     }
     body {
       font-size: 100%;
+      font-family: 'Roboto', sans-serif;
     }
   </style>
 </head>
@@ -146,7 +147,25 @@
         },
       }
     };
-    var official_chart = new Chart(official_ctx, official_cfg);
+
+    var has_data = data['ny7daypositive'][zip_code];
+    if (has_data) {
+      var official_chart = new Chart(official_ctx, official_cfg);
+    } else {
+      document.getElementById('canvas-holder').innerHTML = `
+        Zip code not found. Only NYC zip codes are included.
+        <p>
+        Within NYC, some zip codes are not included as they are grouped with
+        other zip codes as part of NYC's modified ZIP Code Tabulation Areas.
+        For example, 11249 is included under 11211.
+        <p>
+        You can see a map of tabulation areas here:
+        <br>
+        <a href="https://data.beta.nyc/dataset/nyc-zip-code-tabulation-areas">
+        https://data.beta.nyc/dataset/nyc-zip-code-tabulation-areas
+        </a>
+      `;
+    }
   </script>
 </body>
 

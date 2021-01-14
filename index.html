@@ -79,7 +79,7 @@
         labels: data['ny7daydates'],
         datasets: [{
           data: data['ny7daypositive'][zip_code],
-          label: "7 Day Average Positive Count",
+          label: "New Covid-19 Cases (7 day avg)",
           backgroundColor: color(window.chartColors.red).alpha(0.3).rgbString(),
           borderColor: color(window.chartColors.red).alpha(0.3).rgbString(),
           fill: true,
@@ -87,7 +87,7 @@
         },
         {
           data: data['ny7daypercent'][zip_code],
-          label: "7-day Average Test Positivity %",
+          label: "Test Positivity % (7 day avg)",
           backgroundColor: color(window.chartColors.blue).alpha(0.5).rgbString(),
           borderColor: window.chartColors.blue,
           fill: false,

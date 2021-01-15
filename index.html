@@ -58,7 +58,7 @@
     if (zip_code == '') {
       document.getElementById("canvas-holder").style.display="none";
     } else {
-      gtag('user_properties', { zip: zip_code });
+      gtag('set', 'user_properties', { zip: zip_code });
     }
 
     window.chartColors = {

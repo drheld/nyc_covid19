@@ -1,4 +1,4 @@
-<tml>
+<html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NYC Covid Stats By Zip</title>
@@ -13,20 +13,108 @@
   </script>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.bundle.min.js" integrity="sha512-SuxO9djzjML6b9w9/I07IWnLnQhgyYVSpHZx0JV97kGBfTIsUYlWflyuW4ypnvhBrslz1yJ3R+S14fdCWmSmSA==" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-colorschemes" crossorigin="anonymous"></script>
   <script src="data.js"></script>
   <style type="text/css">
-    #canvas-holder {
+    .canvas-holder {
         background-color: #FFFFFF;
         top: 8px;
         left: 8px;
         right: 8px;
-        bottom: 8px;
         height: 85%;
     }
     body {
       font-size: 100%;
       font-family: 'Roboto', sans-serif;
     }
+    @media only screen and (max-width: 600px) {
+      #zip_input {
+        width: 40%;
+      }
+    }
+    .help-tip{
+        position: absolute;
+        top: 18px;
+        right: 18px;
+        text-align: center;
+        background-color: #BCDBEA;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        font-size: 14px;
+        line-height: 26px;
+        cursor: default;
+    }
+
+    .help-tip:before{
+        content:'?';
+        font-weight: bold;
+        color:#fff;
+    }
+
+    .help-tip:hover p{
+        display:block;
+        transform-origin: 100% 0%;
+
+        -webkit-animation: fadeIn 0.3s ease-in-out;
+        animation: fadeIn 0.3s ease-in-out;
+
+    }
+
+    .help-tip p{    /* The tooltip */
+        display: none;
+        text-align: left;
+        background-color: #1E2021;
+        padding: 20px;
+        width: 300px;
+        position: absolute;
+        border-radius: 3px;
+        box-shadow: 1px 1px 1px rgba(0, 0, 0, 0.2);
+        right: -4px;
+        color: #FFF;
+        font-size: 13px;
+        line-height: 1.4;
+    }
+
+    .help-tip p:before{ /* The pointer of the tooltip */
+        position: absolute;
+        content: '';
+        width:0;
+        height: 0;
+        border:6px solid transparent;
+        border-bottom-color:#1E2021;
+        right:10px;
+        top:-12px;
+    }
+
+    .help-tip p:after{ /* Prevents the tooltip from being hidden */
+        width:100%;
+        height:40px;
+        content:'';
+        position: absolute;
+        top:-40px;
+        left:0;
+    }
+
+    /* CSS animation */
+
+    @-webkit-keyframes fadeIn {
+        0% { 
+            opacity:0; 
+            transform: scale(0.6);
+        }
+
+        100% {
+            opacity:100%;
+            transform: scale(1);
+        }
+    }
+
+    @keyframes fadeIn {
+        0% { opacity:0; }
+        100% { opacity:100%; }
+    }
+
   </style>
 </head>
 
@@ -37,8 +125,15 @@
       <input type="submit" value="Update">
     </form>
   </div>
-  <div id="canvas-holder">
-    <canvas id="official"></canvas>
+  <div class="help-tip">
+    <p>Enter any zip code that NYC uses for their zip code aggregation. You can also enter multiple zip codes to compare them, for example: 11211,10011
+    </p>
+  </div>
+  <div id="c1_canvas" class="canvas-holder">
+    <canvas id="c1"></canvas>
+  </div>
+  <div id="c2_canvas" class="canvas-holder" style="display:none">
+    <canvas id="c2"></canvas>
   </div>
   <div id="disclaimer">
     Source data from <a href="https://github.com/nychealth/coronavirus-data">NYC Health</a>.
@@ -56,9 +151,7 @@
       zip_code = url_params.get('zip');
     }
     document.getElementById('zip_input').value = zip_code;
-    if (zip_code == '') {
-      document.getElementById("canvas-holder").style.display="none";
-    } else {
+    if (zip_code != '') {
       gtag('set', 'user_properties', { zip: zip_code });
     }
 
@@ -67,105 +160,158 @@
       orange: 'rgb(255, 159, 64)',
       yellow: 'rgb(255, 205, 86)',
       green: 'rgb(75, 192, 192)',
-      blue: 'rgb(54, 162, 235)',
-      light_blue: 'rgb(173, 216, 230)',
+      blue: 'rgb(31, 120, 180)',
+      light_blue: 'rgb(166, 206, 227)',
       purple: 'rgb(153, 102, 255)',
       grey: 'rgb(201, 203, 207)'
     };
     var color = Chart.helpers.color;
 
-    var official_ctx = document.getElementById('official').getContext('2d');
-    var official_cfg = {
-      type: 'line',
-      data: {
-        labels: data['ny7daydates'],
-        datasets: [{
-          data: data['ny7daypositive'][zip_code],
-          label: "New Daily Covid-19 Cases (7 day avg)",
-          backgroundColor: color(window.chartColors.red).alpha(0.3).rgbString(),
-          borderColor: color(window.chartColors.red).alpha(0.3).rgbString(),
-          fill: true,
-          yAxisID: 'testA'
-        },
-        {
-          data: data['ny7daypercent'][zip_code],
-          label: "Test Positivity % (7 day avg)",
-          backgroundColor: color(window.chartColors.blue).alpha(0.5).rgbString(),
-          borderColor: window.chartColors.blue,
-          fill: false,
-          yAxisID: 'percentA'
-        }]
+    var zips = zip_code.split(',').map(function(z) { return z.trim(); });
+    var test_a = {
+      id: 'testA',
+      position: 'left',
+      ticks: {
+        autoSkip: true,
       },
-      options: {
-        maintainAspectRatio: false,
-        scales: {
-          xAxes: [
-            {
-              display: true,
-              type: 'time',
-              scaleLabel: {
-                display: true,
-                labelString: 'Date',
-              },
-              time: {
-                parser: 'YYYY-MM-DD',
-                tooltipFormat: 'YYYY-MM-DD',
-                unit: 'day',
-                unitStepSize: 1,
-                displayFormats: {
-                  'day': 'MM-DD'
-                }
-              },
-            }
-          ],
-          yAxes: [
-            {
-              id: 'testA',
-              position: 'left',
-              ticks: {
-                autoSkip: true,
-              },
-            }, {
-              id: 'percentA',
-              position: 'right',
-              scaleLabel: {
-                display: false,
-                labelString: 'Percent Positive',
-              },
-              ticks: {
-                autoSkip: true,
-                callback: function(label, index, labels) { return label + '%'; },
-              },
-              gridLines: {
-                drawOnChartArea: false,
-              },
-            },
-          ],
-        },
-        title: {
-          display: true,
-          text: 'NYC Official Stats (' + zip_code + ')',
-        },
-      }
+    };
+    var percent_a = {
+      id: 'percentA',
+      position: 'right',
+      scaleLabel: {
+        display: false,
+        labelString: 'Percent Positive',
+      },
+      ticks: {
+        autoSkip: true,
+        callback: function(label, index, labels) { return label + '%'; },
+      },
     };
 
-    var has_data = data['ny7daypositive'][zip_code];
-    if (has_data) {
-      var official_chart = new Chart(official_ctx, official_cfg);
+    function make_graph(div_id, title, datasets, axes) {
+      var ctx = document.getElementById(div_id).getContext('2d');
+      var cfg = {
+        type: 'line',
+        data: {
+          labels: data['ny7daydates'],
+          datasets: datasets
+        },
+        options: {
+          plugins: {
+              colorschemes: {
+                  scheme: 'brewer.Paired12'
+              }
+          },
+          maintainAspectRatio: false,
+          scales: {
+            xAxes: [
+              {
+                display: true,
+                type: 'time',
+                scaleLabel: {
+                  display: true,
+                  labelString: 'Date',
+                },
+                time: {
+                  parser: 'YYYY-MM-DD',
+                  tooltipFormat: 'YYYY-MM-DD',
+                  unit: 'day',
+                  unitStepSize: 1,
+                  displayFormats: {
+                    'day': 'MM-DD'
+                  }
+                },
+              }
+            ],
+            yAxes: axes,
+          },
+          title: {
+            display: true,
+            text: title,
+          },
+        }
+      };
+      var chart = new Chart(ctx, cfg);
+    }
+
+    function show_error(start) {
+        document.getElementById('c1_canvas').innerHTML = start + `
+          Only NYC zip codes are included.
+          <p>
+          Within NYC, some zip codes are not included as they are grouped with
+          other zip codes as part of NYC's modified ZIP Code Tabulation Areas.
+          For example, 11249 is included under 11211.
+          <p>
+          You can see a map of tabulation areas here:
+          <br>
+          <a href="https://data.beta.nyc/dataset/nyc-zip-code-tabulation-areas">
+          https://data.beta.nyc/dataset/nyc-zip-code-tabulation-areas
+          </a>
+        `;
+    }
+
+    if (zip_code != "" && zips.length == 1) {
+      var has_data = data['ny7daypositive'][zip_code];
+      if (has_data) {
+        percent_a['gridLines'] = { drawOnChartArea: false };
+        datasets = [{
+            data: data['ny7daypositive'][zip_code],
+            label: "New Daily Covid-19 Cases (7 day avg)",
+            backgroundColor: color(window.chartColors.light_blue).alpha(0.5).rgbString(),
+            borderColor: color(window.chartColors.light_blue).alpha(0.5).rgbString(),
+            pointBorderColor: color(window.chartColors.light_blue).alpha(0.5).rgbString(),
+            pointBackgroundColor: color(window.chartColors.light_blue).alpha(0.5).rgbString(),
+            fill: true,
+            yAxisID: 'testA'
+          },
+          {
+            data: data['ny7daypercent'][zip_code],
+            label: "Test Positivity % (7 day avg)",
+            backgroundColor: color(window.chartColors.blue).alpha(0.5).rgbString(),
+            borderColor: window.chartColors.blue,
+            pointBorderColor: window.chartColors.blue,
+            fill: false,
+            yAxisID: 'percentA'
+          }];
+        make_graph('c1', 'NYC Official Stats (' + zip_code + ')', datasets, [percent_a, test_a]);
+      } else {
+        show_error('Zip code not found.');
+      }
+    } else if (zips.length > 1) {
+      percent_a.position = 'left';
+      not_found = [];
+      percents = [];
+      counts = [];
+      zips.forEach(function(zip) {
+        var positive = data['ny7daypositive'][zip];
+        if (positive) {
+          counts.push({
+            data: data['ny7daypositive'][zip],
+            label: zip,
+            yAxisID: 'testA',
+            fill: false,
+          });
+          percents.push({
+            data: data['ny7daypercent'][zip],
+            label: zip,
+            yAxisID: 'percentA',
+            fill: false,
+          });
+        } else {
+          not_found.push(zip);
+        }
+      });
+      if (not_found.length > 0) {
+        show_error('The following zips were not found: ' + not_found + '.');
+      } else {
+        document.getElementById("c2_canvas").style.display="block";
+        make_graph('c1', 'Test Positivity % (7 day avg)', percents, [percent_a]);
+        make_graph('c2', 'New Daily Covid-19 Cases (7 day avg)', counts, [test_a]);
+      }
     } else {
-      document.getElementById('canvas-holder').innerHTML = `
-        Zip code not found. Only NYC zip codes are included.
-        <p>
-        Within NYC, some zip codes are not included as they are grouped with
-        other zip codes as part of NYC's modified ZIP Code Tabulation Areas.
-        For example, 11249 is included under 11211.
-        <p>
-        You can see a map of tabulation areas here:
-        <br>
-        <a href="https://data.beta.nyc/dataset/nyc-zip-code-tabulation-areas">
-        https://data.beta.nyc/dataset/nyc-zip-code-tabulation-areas
-        </a>
-      `;
+      document.getElementById('c1_canvas').innerHTML = `
+      You can enter a zip code, or a comma separated list of zip codes to compare.
+      `
     }
   </script>
 </body>

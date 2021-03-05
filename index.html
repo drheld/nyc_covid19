@@ -120,7 +120,7 @@
 
 <body>
   <div id="selector">
-    <form action="/nyc_covid19/" method="get">
+    <form action="/nyc_covid19/" method="get" id="zip_form">
       NYC Zip code: <input type="text" id="zip_input" name="zip">
       <input type="submit" value="Update">
     </form>
@@ -153,6 +153,8 @@
     document.getElementById('zip_input').value = zip_code;
     if (zip_code != '') {
       gtag('set', 'user_properties', { zip: zip_code });
+      document.getElementById('zip_form').innerHTML +=
+        '&nbsp;<sup><b>New!</b> See <a href="/nyc_covid19/">animated maps</a>.';
     }
 
     window.chartColors = {
@@ -310,7 +312,19 @@
       }
     } else {
       document.getElementById('c1_canvas').innerHTML = `
-      You can enter a zip code, or a comma separated list of zip codes to compare.
+      <p>
+        You can enter a zip code, or a comma separated list of zip codes to compare.
+      </p>
+      <p>
+      To see animations of trends over time for all NYC zip codes on a map, see the
+      following options:
+      <ul>
+        <li><a href="/nyc_covid19/animation_percent_positive.html">Positivity Percentage Map</a></li>
+        <li><a href="/nyc_covid19/animation_percent_positive.html">Cases per 100k People Map</a></li>
+        <li><a href="/nyc_covid19/animation_percent_positive.html">Tests per 100k People Map</a></li>
+      </ul>
+      </p>
+      <small>Thanks Ben Friend for the animated maps!</small>
       `
     }
   </script>

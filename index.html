@@ -250,6 +250,9 @@
         `;
     }
 
+    var last_updated = data["ny7daydates"][data["ny7daydates"].length-1];
+    document.getElementById('selector').innerHTML += "Updated " + last_updated;
+
     if (zip_code != "" && zips.length == 1) {
       var has_data = data['ny7daypositive'][zip_code];
       if (has_data) {

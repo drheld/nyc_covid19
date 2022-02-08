@@ -124,6 +124,8 @@
       NYC Zip code: <input type="text" id="zip_input" name="zip">
       <input type="submit" value="Update">
     </form>
+    <input type="checkbox" id="last_3_months" checked onclick="toggle();">Last 3 Months
+    <span id="last_updated" style="float:right;"></span>
   </div>
   <div class="help-tip">
     <p>Enter any zip code that NYC uses for their zip code aggregation. You can also enter multiple zip codes to compare them, for example: 11211,10011
@@ -188,12 +190,14 @@
       },
     };
 
+    var charts = [];
+
     function make_graph(div_id, title, datasets, axes) {
       var ctx = document.getElementById(div_id).getContext('2d');
       var cfg = {
         type: 'line',
         data: {
-          labels: data['ny7daydates'],
+          labels: render_dates,
           datasets: datasets
         },
         options: {
@@ -231,7 +235,7 @@
           },
         }
       };
-      var chart = new Chart(ctx, cfg);
+      charts.push(new Chart(ctx, cfg));
     }
 
     function show_error(start) {
@@ -251,14 +255,65 @@
     }
 
     var last_updated = data["ny7daydates"][data["ny7daydates"].length-1];
-    document.getElementById('selector').innerHTML += "Updated " + last_updated;
+    document.getElementById('last_updated').innerHTML += "<small><i>Updated " + last_updated + "</i></small>";
+
+    var full_dates = data['ny7daydates'];
+    var render_dates = full_dates;
+
+    var full_positive_data = {};
+    var full_percent_data = {};
+    var positive_render_data = {};
+    var percent_render_data = {};
+    zips.forEach(function(zip) {
+      positive = data['ny7daypositive'][zip];
+      full_positive_data[zip] = [...positive];
+      percent = data['ny7daypercent'][zip];
+      full_percent_data[zip] = [...percent];
+    });
+    // Free up some memory.
+    data = [];
+
+    function toggle() {
+      var checked = document.getElementById("last_3_months").checked;
+      if (checked) {
+        render_dates = full_dates.slice(-90);
+      } else {
+        render_dates = full_dates;
+      }
+      zips.forEach(function(zip) {
+        if (checked) {
+          positive_render_data[zip] = full_positive_data[zip].slice(-90);
+          percent_render_data[zip] = full_percent_data[zip].slice(-90);
+        } else {
+          positive_render_data[zip] = full_positive_data[zip];
+          percent_render_data[zip] = full_percent_data[zip];
+        }
+      });
+
+      if (charts.length == 1) {
+        charts[0].chart.data.labels = render_dates;
+        charts[0].chart.data.datasets[0].data = positive_render_data[zips[0]];
+        charts[0].chart.data.datasets[1].data = percent_render_data[zips[0]];
+        charts[0].update();
+      } else if (charts.length > 1) {
+        charts[0].chart.data.labels = render_dates;
+        charts[1].chart.data.labels = render_dates;
+        charts[0].chart.data.datasets[0].data = percent_render_data[zips[0]];
+        charts[0].chart.data.datasets[1].data = percent_render_data[zips[1]];
+        charts[1].chart.data.datasets[0].data = positive_render_data[zips[0]];
+        charts[1].chart.data.datasets[1].data = positive_render_data[zips[1]];
+        charts[0].update();
+        charts[1].update();
+      }
+    }
+    toggle();
 
     if (zip_code != "" && zips.length == 1) {
-      var has_data = data['ny7daypositive'][zip_code];
+      var has_data = positive_render_data[zip_code];
       if (has_data) {
         percent_a['gridLines'] = { drawOnChartArea: false };
         datasets = [{
-            data: data['ny7daypositive'][zip_code],
+            data: positive_render_data[zip_code],
             label: "New Daily Covid-19 Cases per 100k people (7 day avg)",
             backgroundColor: color(window.chartColors.light_blue).alpha(0.5).rgbString(),
             borderColor: color(window.chartColors.light_blue).alpha(0.5).rgbString(),
@@ -268,7 +323,7 @@
             yAxisID: 'testA'
           },
           {
-            data: data['ny7daypercent'][zip_code],
+            data: percent_render_data[zip_code],
             label: "Test Positivity % (7 day avg)",
             backgroundColor: color(window.chartColors.blue).alpha(0.5).rgbString(),
             borderColor: window.chartColors.blue,
@@ -286,16 +341,16 @@
       percents = [];
       counts = [];
       zips.forEach(function(zip) {
-        var positive = data['ny7daypositive'][zip];
+        var positive = positive_render_data[zip];
         if (positive) {
           counts.push({
-            data: data['ny7daypositive'][zip],
+            data: positive_render_data[zip],
             label: zip,
             yAxisID: 'testA',
             fill: false,
           });
           percents.push({
-            data: data['ny7daypercent'][zip],
+            data: percent_render_data[zip],
             label: zip,
             yAxisID: 'percentA',
             fill: false,

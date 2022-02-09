@@ -115,6 +115,10 @@
         100% { opacity:100%; }
     }
 
+    input[type=radio] {
+      display: inline;
+    }
+
   </style>
 </head>
 
@@ -124,7 +128,9 @@
       NYC Zip code: <input type="text" id="zip_input" name="zip">
       <input type="submit" value="Update">
     </form>
-    <input type="checkbox" id="last_3_months" checked onclick="toggle();">Last 3 Months
+    Window: <input id="1m" type="radio" name="duration" checked onclick="toggle();">1m
+    <input id="3m" type="radio" name="duration" onclick="toggle();">3m
+    <input id="all" type="radio" name="duration" onclick="toggle();">All
     <span id="last_updated" style="float:right;"></span>
   </div>
   <div class="help-tip">
@@ -207,11 +213,20 @@
     // Free up some memory.
     data = [];
 
+    if (! /Mobi/.test(navigator.userAgent)) {
+      document.getElementById("3m").checked = true;
+    }
+
     function toggle() {
-      var checked = document.getElementById("last_3_months").checked;
-      if (checked) {
+      var months = 0;
+      if (document.getElementById("1m").checked) {
+        months = 1;
+      } else if (document.getElementById("3m").checked) {
+        months = 3;
+      }
+      if (months > 0) {
         var oldest = new Date();
-        oldest.setMonth(oldest.getMonth() - 3);
+        oldest.setMonth(oldest.getMonth() - months);
 
         for (slice = 0; slice < full_dates.length; slice++) {
           if (new Date(full_dates[slice]) >= oldest) break;

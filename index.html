@@ -236,11 +236,23 @@
       }
 
       if (charts.length == 1) {
+        charts[0].chart.data.labels = [];
+        charts[0].chart.data.datasets[0].data = [];
+        charts[0].chart.data.datasets[1].data = [];
+        charts[0].update();
         charts[0].chart.data.labels = full_dates.slice(slice);
         charts[0].chart.data.datasets[0].data = positive_data[zips[0]].slice(slice);
         charts[0].chart.data.datasets[1].data = percent_data[zips[0]].slice(slice);
         charts[0].update();
       } else if (charts.length > 1) {
+        charts[0].chart.data.labels = [];
+        charts[1].chart.data.labels = [];
+        charts[0].chart.data.datasets[0].data = [];
+        charts[0].chart.data.datasets[1].data = [];
+        charts[1].chart.data.datasets[0].data = [];
+        charts[1].chart.data.datasets[1].data = [];
+        charts[0].update();
+        charts[1].update();
         charts[0].chart.data.labels = full_dates.slice(slice);
         charts[1].chart.data.labels = full_dates.slice(slice);
         charts[0].chart.data.datasets[0].data = percent_data[zips[0]].slice(slice);

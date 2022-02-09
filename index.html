@@ -190,14 +190,60 @@
       },
     };
 
+    var last_updated = data["ny7daydates"][data["ny7daydates"].length-1];
+    document.getElementById('last_updated').innerHTML += "<small><i>Updated " + last_updated + "</i></small>";
+
+    var full_dates = data['ny7daydates'];
     var charts = [];
+    var positive_data = {};
+    var percent_data = {};
+    var slice = 0;
+    zips.forEach(function(zip) {
+      positive = data['ny7daypositive'][zip];
+      positive_data[zip] = [...positive];
+      percent = data['ny7daypercent'][zip];
+      percent_data[zip] = [...percent];
+    });
+    // Free up some memory.
+    data = [];
+
+    function toggle() {
+      var checked = document.getElementById("last_3_months").checked;
+      if (checked) {
+        var oldest = new Date();
+        oldest.setMonth(oldest.getMonth() - 3);
+
+        for (slice = 0; slice < full_dates.length; slice++) {
+          if (new Date(full_dates[slice]) >= oldest) break;
+        }
+      } else {
+        slice = 0;
+      }
+
+      if (charts.length == 1) {
+        charts[0].chart.data.labels = full_dates.slice(slice);
+        charts[0].chart.data.datasets[0].data = positive_data[zips[0]].slice(slice);
+        charts[0].chart.data.datasets[1].data = percent_data[zips[0]].slice(slice);
+        charts[0].update();
+      } else if (charts.length > 1) {
+        charts[0].chart.data.labels = full_dates.slice(slice);
+        charts[1].chart.data.labels = full_dates.slice(slice);
+        charts[0].chart.data.datasets[0].data = percent_data[zips[0]].slice(slice);
+        charts[0].chart.data.datasets[1].data = percent_data[zips[1]].slice(slice);
+        charts[1].chart.data.datasets[0].data = positive_data[zips[0]].slice(slice);
+        charts[1].chart.data.datasets[1].data = positive_data[zips[1]].slice(slice);
+        charts[0].update();
+        charts[1].update();
+      }
+    }
+    toggle();
 
     function make_graph(div_id, title, datasets, axes) {
       var ctx = document.getElementById(div_id).getContext('2d');
       var cfg = {
         type: 'line',
         data: {
-          labels: render_dates,
+          labels: full_dates.slice(slice),
           datasets: datasets
         },
         options: {
@@ -254,66 +300,12 @@
         `;
     }
 
-    var last_updated = data["ny7daydates"][data["ny7daydates"].length-1];
-    document.getElementById('last_updated').innerHTML += "<small><i>Updated " + last_updated + "</i></small>";
-
-    var full_dates = data['ny7daydates'];
-    var render_dates = full_dates;
-
-    var full_positive_data = {};
-    var full_percent_data = {};
-    var positive_render_data = {};
-    var percent_render_data = {};
-    zips.forEach(function(zip) {
-      positive = data['ny7daypositive'][zip];
-      full_positive_data[zip] = [...positive];
-      percent = data['ny7daypercent'][zip];
-      full_percent_data[zip] = [...percent];
-    });
-    // Free up some memory.
-    data = [];
-
-    function toggle() {
-      var checked = document.getElementById("last_3_months").checked;
-      if (checked) {
-        render_dates = full_dates.slice(-90);
-      } else {
-        render_dates = full_dates;
-      }
-      zips.forEach(function(zip) {
-        if (checked) {
-          positive_render_data[zip] = full_positive_data[zip].slice(-90);
-          percent_render_data[zip] = full_percent_data[zip].slice(-90);
-        } else {
-          positive_render_data[zip] = full_positive_data[zip];
-          percent_render_data[zip] = full_percent_data[zip];
-        }
-      });
-
-      if (charts.length == 1) {
-        charts[0].chart.data.labels = render_dates;
-        charts[0].chart.data.datasets[0].data = positive_render_data[zips[0]];
-        charts[0].chart.data.datasets[1].data = percent_render_data[zips[0]];
-        charts[0].update();
-      } else if (charts.length > 1) {
-        charts[0].chart.data.labels = render_dates;
-        charts[1].chart.data.labels = render_dates;
-        charts[0].chart.data.datasets[0].data = percent_render_data[zips[0]];
-        charts[0].chart.data.datasets[1].data = percent_render_data[zips[1]];
-        charts[1].chart.data.datasets[0].data = positive_render_data[zips[0]];
-        charts[1].chart.data.datasets[1].data = positive_render_data[zips[1]];
-        charts[0].update();
-        charts[1].update();
-      }
-    }
-    toggle();
-
     if (zip_code != "" && zips.length == 1) {
-      var has_data = positive_render_data[zip_code];
+      var has_data = positive_data[zip_code];
       if (has_data) {
         percent_a['gridLines'] = { drawOnChartArea: false };
         datasets = [{
-            data: positive_render_data[zip_code],
+            data: positive_data[zip_code].slice(slice),
             label: "New Daily Covid-19 Cases per 100k people (7 day avg)",
             backgroundColor: color(window.chartColors.light_blue).alpha(0.5).rgbString(),
             borderColor: color(window.chartColors.light_blue).alpha(0.5).rgbString(),
@@ -323,7 +315,7 @@
             yAxisID: 'testA'
           },
           {
-            data: percent_render_data[zip_code],
+            data: percent_data[zip_code].slice(slice),
             label: "Test Positivity % (7 day avg)",
             backgroundColor: color(window.chartColors.blue).alpha(0.5).rgbString(),
             borderColor: window.chartColors.blue,
@@ -341,16 +333,16 @@
       percents = [];
       counts = [];
       zips.forEach(function(zip) {
-        var positive = positive_render_data[zip];
+        var positive = positive_data[zip].slice(slice);
         if (positive) {
           counts.push({
-            data: positive_render_data[zip],
+            data: positive_data[zip].slice(slice),
             label: zip,
             yAxisID: 'testA',
             fill: false,
           });
           percents.push({
-            data: percent_render_data[zip],
+            data: percent_data[zip].slice(slice),
             label: zip,
             yAxisID: 'percentA',
             fill: false,

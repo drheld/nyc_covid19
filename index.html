@@ -255,18 +255,18 @@
       } else if (charts.length > 1) {
         charts[0].chart.data.labels = [];
         charts[1].chart.data.labels = [];
-        charts[0].chart.data.datasets[0].data = [];
-        charts[0].chart.data.datasets[1].data = [];
-        charts[1].chart.data.datasets[0].data = [];
-        charts[1].chart.data.datasets[1].data = [];
+        for (var z = 0; z < zips.length; z++) {
+          charts[0].chart.data.datasets[z].data = [];
+          charts[1].chart.data.datasets[z].data = [];
+        }
         charts[0].update();
         charts[1].update();
         charts[0].chart.data.labels = full_dates.slice(slice);
         charts[1].chart.data.labels = full_dates.slice(slice);
-        charts[0].chart.data.datasets[0].data = percent_data[zips[0]].slice(slice);
-        charts[0].chart.data.datasets[1].data = percent_data[zips[1]].slice(slice);
-        charts[1].chart.data.datasets[0].data = positive_data[zips[0]].slice(slice);
-        charts[1].chart.data.datasets[1].data = positive_data[zips[1]].slice(slice);
+        for (var z = 0; z < zips.length; z++) {
+          charts[0].chart.data.datasets[z].data = percent_data[zips[z]].slice(slice);
+          charts[1].chart.data.datasets[z].data = positive_data[zips[z]].slice(slice);
+        }
         charts[0].update();
         charts[1].update();
       }
